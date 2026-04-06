@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -51,7 +51,7 @@
 @keyframes keyword-fade {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -60,7 +60,16 @@
 }
 
 .animate-keyword {
-  animation: keyword-fade 0.55s ease-out both;
+  animation: keyword-fade 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Subtle grid for hero depth (Stripe/Linear-style) */
+.hero-grid-bg {
+  background-image:
+    linear-gradient(to right, rgb(24 24 27 / 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(24 24 27 / 0.04) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: radial-gradient(ellipse 85% 70% at 50% 0%, black 45%, transparent 100%);
 }
 
 body {
@@ -68,14 +77,15 @@ body {
 }
 
 :root {
+  /* ~60% white (surfaces), ~30% muted gray, ~10% primary indigo accent */
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.45 0.19 270);
+  --primary-foreground: oklch(0.99 0.01 270);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
@@ -141,9 +151,25 @@ body {
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
   }
   html {
     @apply font-sans;
+  }
+}
+
+/* LMS dashboard: consistent section headings & interactive cards */
+@layer components {
+  .lms-page-title {
+    @apply text-2xl font-semibold tracking-tight text-foreground sm:text-3xl;
+  }
+  .lms-page-lead {
+    @apply text-sm text-muted-foreground sm:text-base;
+  }
+  .lms-card-elevated {
+    @apply rounded-xl border border-border/80 bg-card shadow-sm ring-1 ring-foreground/[0.03] transition-all duration-200;
+  }
+  .lms-card-elevated:hover {
+    @apply -translate-y-0.5 shadow-md;
   }
 }

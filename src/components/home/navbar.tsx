@@ -2,30 +2,33 @@
 
 import Link from "next/link";
 import { useState } from "react";
+
+import { useAuth } from "@/contexts/auth-context";
 import { navLinks } from "@/lib/home-data";
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
+  const { isAuthenticated, isLoading } = useAuth();
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 shadow-sm backdrop-blur-md supports-[backdrop-filter]:bg-white/75">
-      <nav className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 lg:px-6">
+    <header className="sticky top-0 z-50 border-b border-border/80 bg-background/80 shadow-sm backdrop-blur-xl supports-[backdrop-filter]:bg-background/70">
+      <nav className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
         <Link
           href="/"
-          className="flex shrink-0 items-center gap-2 font-semibold tracking-tight text-slate-900"
+          className="flex shrink-0 items-center gap-2.5 font-semibold tracking-tight text-foreground"
         >
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-violet-600 text-[13px] font-bold text-primary-foreground shadow-sm ring-1 ring-primary/10">
             AA
           </span>
-          <span className="hidden sm:inline">Analytics Avenue</span>
+          <span className="hidden text-[15px] sm:inline">Analytics Avenue</span>
         </Link>
 
-        <div className="hidden flex-1 items-center justify-center gap-1 lg:flex">
+        <div className="hidden flex-1 items-center justify-center gap-0.5 lg:flex">
           {navLinks.map((link) => (
             <Link
               key={link.label}
               href={link.href}
-              className="rounded-md px-2.5 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+              className="rounded-lg px-2.5 py-2 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               {link.label}
             </Link>
@@ -33,17 +36,26 @@ export function Navbar() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Link
-            href="#"
-            className="hidden rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 sm:inline-flex"
-          >
-            Login
-          </Link>
+          {!isLoading && isAuthenticated ? (
+            <Link
+              href="/dashboard"
+              className="hidden rounded-xl border border-border/80 bg-card px-4 py-2 text-[13px] font-semibold text-foreground shadow-sm transition hover:bg-muted sm:inline-flex"
+            >
+              Dashboard
+            </Link>
+          ) : (
+            <Link
+              href="/login"
+              className="hidden rounded-xl border border-border/80 bg-card px-4 py-2 text-[13px] font-semibold text-foreground shadow-sm transition hover:bg-muted sm:inline-flex"
+            >
+              Login
+            </Link>
+          )}
           <button
             type="button"
             aria-expanded={open}
             aria-label="Toggle menu"
-            className="inline-flex rounded-lg border border-slate-200 p-2 text-slate-700 lg:hidden"
+            className="inline-flex rounded-xl border border-border/80 bg-card p-2 text-foreground shadow-sm transition hover:bg-muted lg:hidden"
             onClick={() => setOpen((v) => !v)}
           >
             <svg
@@ -64,25 +76,35 @@ export function Navbar() {
       </nav>
 
       {open ? (
-        <div className="border-t border-slate-100 bg-white px-4 py-4 lg:hidden">
-          <div className="flex flex-col gap-1">
+        <div className="border-t border-border/60 bg-background px-4 py-3 lg:hidden">
+          <div className="flex flex-col gap-0.5">
             {navLinks.map((link) => (
               <Link
                 key={link.label}
                 href={link.href}
-                className="rounded-md px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                className="rounded-lg px-3 py-2.5 text-[13px] font-medium text-foreground transition hover:bg-muted"
                 onClick={() => setOpen(false)}
               >
                 {link.label}
               </Link>
             ))}
-            <Link
-              href="#"
-              className="mt-2 rounded-lg bg-indigo-600 px-3 py-2.5 text-center text-sm font-semibold text-white"
-              onClick={() => setOpen(false)}
-            >
-              Login
-            </Link>
+            {!isLoading && isAuthenticated ? (
+              <Link
+                href="/dashboard"
+                className="mt-2 rounded-xl bg-primary px-3 py-2.5 text-center text-[13px] font-semibold text-primary-foreground transition hover:bg-primary/90"
+                onClick={() => setOpen(false)}
+              >
+                Dashboard
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="mt-2 rounded-xl bg-primary px-3 py-2.5 text-center text-[13px] font-semibold text-primary-foreground transition hover:bg-primary/90"
+                onClick={() => setOpen(false)}
+              >
+                Login
+              </Link>
+            )}
           </div>
         </div>
       ) : null}

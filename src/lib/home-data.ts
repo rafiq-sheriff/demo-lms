@@ -3,7 +3,7 @@
  */
 
 export const navLinks = [
-  { label: "All Programs", href: "#programs" },
+  { label: "All Programs", href: "/courses" },
   { label: "Home", href: "#" },
   { label: "Podcasts", href: "#" },
   { label: "Referral", href: "#" },
@@ -97,41 +97,74 @@ export const features = [
 
 export const aiPrograms = [
   {
+    id: "agentic-ai-for-data-practitioners",
     title: "Agentic AI for Data Practitioners",
-    price: "₹24,999",
+    price: "Free",
+    isFree: true,
     rating: 4.9,
     lessons: 28,
   },
   {
+    id: "machine-learning-engineering-production-path",
     title: "Machine Learning Engineering — Production Path",
-    price: "₹29,999",
+    price: "Free",
+    isFree: true,
     rating: 4.8,
     lessons: 36,
   },
   {
+    id: "data-engineering-modern-stack",
     title: "Data Engineering on the Modern Stack",
-    price: "₹27,499",
+    price: "Free",
+    isFree: true,
     rating: 4.8,
     lessons: 32,
   },
   {
+    id: "business-intelligence-analytics-storytelling",
     title: "Business Intelligence & Analytics Storytelling",
     price: "₹18,999",
+    isFree: false,
     rating: 4.7,
     lessons: 22,
   },
   {
+    id: "statistics-decision-making-modeling",
     title: "Statistics for Decision-Making & Modeling",
     price: "₹16,499",
+    isFree: false,
     rating: 4.8,
     lessons: 20,
   },
   {
+    id: "generative-ai-foundations-analytics-teams",
     title: "Generative AI Foundations for Analytics Teams",
     price: "₹21,999",
+    isFree: false,
     rating: 4.9,
     lessons: 24,
   },
+] as const;
+
+/** Homepage programs grid — matches spec (3–6). */
+export const homeProgramsPreviewCount = 6;
+
+/** Initial feature cards before “View All Features”. */
+export const featuresPreviewCount = 8;
+
+/** Existing feature rows surfaced in the Experts section (titles must match `features`). */
+export const expertsSectionFeatureTitles = [
+  "Industry-aligned curriculum",
+  "1:1 mentorship",
+  "Live instructor-led classes",
+] as const;
+
+/** Hiring / career features for the Placement section (titles must match `features`). */
+export const placementSectionFeatureTitles = [
+  "Interview preparation",
+  "Hiring partner sessions",
+  "Resume & LinkedIn reviews",
+  "Career roadmap planning",
 ] as const;
 
 export const stats = [

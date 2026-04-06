@@ -1,0 +1,1 @@
+"""LMS FastAPI application package."""
