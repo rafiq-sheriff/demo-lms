@@ -16,6 +16,7 @@ import {
   ApiError,
   enrollCourse,
   getCourse,
+  getMyCourses,
   type CourseDetail as ApiCourseDetail,
 } from "@/lib/api";
 import { getCourseDetail, type CourseDetail } from "@/lib/course-detail";
@@ -42,6 +43,12 @@ export function CourseDetailPageClient({ courseId }: Props) {
   const router = useRouter();
   const qc = useQueryClient();
   const { isAuthenticated } = useAuth();
+
+  const myCoursesQuery = useQuery({
+    queryKey: ["my-courses"],
+    queryFn: getMyCourses,
+    enabled: isAuthenticated,
+  });
 
   const apiQuery = useQuery({
     queryKey: ["course", courseId],
@@ -111,6 +118,9 @@ export function CourseDetailPageClient({ courseId }: Props) {
   }
 
   const course: CourseDetail = resolved.display;
+  const isEnrolled =
+    resolved.source === "api" && myCoursesQuery.data?.some((c) => c.id === courseId) === true;
+
   const firstEmbed =
     resolved.source === "api" && resolved.api
       ? extractYoutubeEmbedId(resolved.api.modules[0]?.lessons[0]?.content ?? null)
@@ -130,6 +140,10 @@ export function CourseDetailPageClient({ courseId }: Props) {
     }
     if (!isAuthenticated) {
       router.push(`/login?next=${encodeURIComponent(`/course/${courseId}`)}`);
+      return;
+    }
+    if (isEnrolled) {
+      router.push(`/dashboard/course/${courseId}`);
       return;
     }
     enrollMutation.mutate();
@@ -220,20 +234,29 @@ export function CourseDetailPageClient({ courseId }: Props) {
                   <button
                     type="button"
                     onClick={handleEnroll}
-                    disabled={enrollMutation.isPending}
+                    disabled={
+                      enrollMutation.isPending ||
+                      (Boolean(isAuthenticated && resolved.source === "api" && myCoursesQuery.isLoading && !isEnrolled))
+                    }
                     className={cn(
                       "inline-flex h-12 w-full items-center justify-center rounded-xl bg-primary px-4 text-[15px] font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:opacity-60",
                     )}
                   >
-                    {enrollMutation.isPending
-                      ? "Enrolling…"
-                      : course.isFree || (resolved.source === "api" && resolved.api?.is_free)
-                        ? "Enroll free"
-                        : "Enroll"}
+                    {resolved.source === "api" && myCoursesQuery.isLoading && isAuthenticated
+                      ? "Checking enrollment…"
+                      : enrollMutation.isPending
+                        ? "Enrolling…"
+                        : isEnrolled && resolved.source === "api"
+                          ? "Continue learning"
+                          : course.isFree || (resolved.source === "api" && resolved.api?.is_free)
+                            ? "Enroll free"
+                            : "Enroll"}
                   </button>
                   <p className="text-center text-xs text-muted-foreground">
                     {resolved.source === "api"
-                      ? "Enrolling adds this course to your dashboard."
+                      ? isEnrolled
+                        ? "You’re enrolled — open the player to pick up where you left off."
+                        : "Enrolling adds this course to your dashboard."
                       : "Preview only—open All Courses for live programs you can enroll in."}
                   </p>
                 </CardContent>

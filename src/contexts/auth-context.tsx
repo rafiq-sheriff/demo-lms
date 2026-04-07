@@ -21,6 +21,34 @@ import {
   type UserPublic,
 } from "@/lib/api";
 
+/** Session bootstrap must not hang forever if the API is slow or unreachable. */
+const SESSION_ME_TIMEOUT_MS = 15_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label = "timeout"): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(label)), ms);
+    promise.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      },
+    );
+  });
+}
+
+function readStoredToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(AUTH_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
 type AuthState = {
   user: UserPublic | null;
   token: string | null;
@@ -57,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const t = typeof window !== "undefined" ? window.localStorage.getItem(AUTH_TOKEN_KEY) : null;
+    const t = readStoredToken();
     setTokenState(t);
     if (!t) {
       setIsLoading(false);
@@ -65,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     void (async () => {
       try {
-        const me = await getMe(t);
+        const me = await withTimeout(getMe(t), SESSION_ME_TIMEOUT_MS, "Session check timed out");
         setUser(me);
       } catch {
         setAuthToken(null);
@@ -77,14 +105,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleTokenSync = (event: Event) => {
+      const nextToken = (event as CustomEvent<string | null>).detail ?? readStoredToken();
+      setTokenState(nextToken);
+      if (!nextToken) {
+        setUser(null);
+      }
+    };
+    window.addEventListener("lms-auth-token", handleTokenSync as EventListener);
+    return () => window.removeEventListener("lms-auth-token", handleTokenSync as EventListener);
+  }, []);
+
   const login = useCallback(
     async (email: string, password: string, redirectTo = "/dashboard") => {
-      const res = await apiLogin({ email, password });
-      setAuthToken(res.access_token);
-      setTokenState(res.access_token);
-      const me = await getMe(res.access_token);
-      setUser(me);
-      router.replace(redirectTo);
+      try {
+        const res = await apiLogin({ email, password });
+        setAuthToken(res.access_token);
+        setTokenState(res.access_token);
+        const me = await getMe(res.access_token);
+        setUser(me);
+        const dest =
+          me.role === "admin"
+            ? redirectTo.startsWith("/dashboard/admin")
+              ? redirectTo
+              : "/dashboard/admin"
+            : redirectTo;
+        router.replace(dest);
+      } catch (e) {
+        setAuthToken(null);
+        setTokenState(null);
+        setUser(null);
+        throw e;
+      }
     },
     [router],
   );

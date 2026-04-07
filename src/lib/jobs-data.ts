@@ -11,6 +11,9 @@ export type JobListing = {
   shortDescription: string;
   fullDescription: string;
   requirements: string[];
+  /** Set when the current user has applied via the API */
+  applied?: boolean;
+  appliedAt?: string | null;
 };
 
 export const jobListings: JobListing[] = [

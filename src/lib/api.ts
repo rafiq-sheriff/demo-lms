@@ -4,6 +4,7 @@
  */
 
 export const AUTH_TOKEN_KEY = "lms_access_token";
+let inMemoryAuthToken: string | null = null;
 
 /**
  * Public API origin for display in errors (e.g. “check server at …”).
@@ -59,6 +60,10 @@ export type CourseOut = {
   title: string;
   description: string | null;
   is_free: boolean;
+  /** Decimal string from API when paid */
+  price: string | null;
+  youtube_url: string | null;
+  image_url: string | null;
   instructor_id: string;
   created_at: string;
   updated_at: string;
@@ -140,6 +145,9 @@ export type TicketOut = {
   status: TicketStatus;
   created_at: string;
   closed_at: string | null;
+  /** Only populated for admin list */
+  student_email?: string | null;
+  student_full_name?: string | null;
 };
 
 export type MessageOut = {
@@ -183,15 +191,20 @@ export type JobOut = {
   created_at: string;
 };
 
+export type ApplicationStatus = "pending" | "reviewed" | "rejected" | "hired";
+
 export type ApplicationOut = {
   id: string;
   job_id: string;
   user_id: string;
   cover_letter: string | null;
   resume_url: string | null;
-  status: string;
+  status: ApplicationStatus;
   applied_at: string;
 };
+
+/** Default timeout so UI never hangs forever when the API is down or the proxy stalls. */
+export const DEFAULT_API_TIMEOUT_MS = 25_000;
 
 export class ApiError extends Error {
   readonly status: number;
@@ -219,17 +232,29 @@ function isApiErrorShape(err: unknown): err is ApiError {
 
 function getStoredToken(): string | null {
   if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(AUTH_TOKEN_KEY);
+  try {
+    const token = window.localStorage.getItem(AUTH_TOKEN_KEY);
+    if (token) inMemoryAuthToken = token;
+    return token;
+  } catch {
+    return inMemoryAuthToken;
+  }
 }
 
 export function setAuthToken(token: string | null): void {
+  inMemoryAuthToken = token;
   if (typeof window === "undefined") return;
-  if (token) window.localStorage.setItem(AUTH_TOKEN_KEY, token);
-  else window.localStorage.removeItem(AUTH_TOKEN_KEY);
+  try {
+    if (token) window.localStorage.setItem(AUTH_TOKEN_KEY, token);
+    else window.localStorage.removeItem(AUTH_TOKEN_KEY);
+  } catch {
+    // Ignore storage failures (private mode / browser policy). In-memory token still works.
+  }
+  window.dispatchEvent(new CustomEvent("lms-auth-token", { detail: token }));
 }
 
 export function getAuthToken(): string | null {
-  return getStoredToken();
+  return inMemoryAuthToken ?? getStoredToken();
 }
 
 type Json = Record<string, unknown> | unknown[] | string | number | boolean | null;
@@ -262,6 +287,11 @@ async function parseErrorDetail(res: Response): Promise<string> {
  */
 export function formatClientError(err: unknown): string {
   if (isApiErrorShape(err)) return err.detail;
+  if (err instanceof Error) {
+    if (err.name === "AbortError" || /aborted|timed out/i.test(err.message)) {
+      return `Request timed out after ${DEFAULT_API_TIMEOUT_MS / 1000}s. Start the FastAPI backend and set BACKEND_URL in .env.local to match it (same origin uses /api/lms → ${getApiV1Url()}).`;
+    }
+  }
   if (err instanceof TypeError && typeof err.message === "string") {
     if (err.message.includes("fetch") || err.message.includes("Failed to fetch")) {
       return `Cannot reach the API. Start the backend (e.g. uvicorn) and ensure BACKEND_URL in .env.local matches it, or set NEXT_PUBLIC_API_URL. Target: ${getApiV1Url()}`;
@@ -272,6 +302,23 @@ export function formatClientError(err: unknown): string {
   return "Something went wrong";
 }
 
+function mergeAbortSignals(a: AbortSignal, b: AbortSignal | null | undefined): AbortSignal {
+  if (!b) return a;
+  if (typeof AbortSignal !== "undefined" && "any" in AbortSignal && typeof AbortSignal.any === "function") {
+    return AbortSignal.any([a, b]);
+  }
+  return a;
+}
+
+function createTimeoutSignal(ms: number): AbortSignal {
+  if (typeof AbortSignal !== "undefined" && "timeout" in AbortSignal && typeof AbortSignal.timeout === "function") {
+    return AbortSignal.timeout(ms);
+  }
+  const c = new AbortController();
+  setTimeout(() => c.abort(), ms);
+  return c.signal;
+}
+
 /**
  * Low-level JSON request with optional Bearer token.
  */
@@ -279,7 +326,7 @@ export async function apiRequest<T>(
   path: string,
   options: RequestInit & { token?: string | null; json?: Json } = {},
 ): Promise<T> {
-  const { token = getStoredToken(), json, headers: initHeaders, ...rest } = options;
+  const { token = getAuthToken(), json, headers: initHeaders, signal: userSignal, ...rest } = options;
   const headers = new Headers(initHeaders);
   if (!headers.has("Accept")) headers.set("Accept", "application/json");
   if (json !== undefined) {
@@ -289,9 +336,12 @@ export async function apiRequest<T>(
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
   const url = `${getApiV1Url()}${path}`;
+  const timeoutSignal = createTimeoutSignal(DEFAULT_API_TIMEOUT_MS);
+  const signal = mergeAbortSignals(timeoutSignal, userSignal ?? undefined);
+
   let res: Response;
   try {
-    res = await fetch(url, { ...rest, headers, credentials: "omit" });
+    res = await fetch(url, { ...rest, headers, credentials: "omit", signal });
   } catch (err) {
     const hint =
       typeof window !== "undefined" && url.startsWith("/")
@@ -307,6 +357,9 @@ export async function apiRequest<T>(
 
   if (!res.ok) {
     const detail = await parseErrorDetail(res);
+    if (res.status === 401) {
+      setAuthToken(null);
+    }
     throw new ApiError(res.status, detail);
   }
 
@@ -403,6 +456,9 @@ export async function listTickets(status?: TicketStatus): Promise<TicketOut[]> {
   return apiRequest<TicketOut[]>(`/tickets${q}`, { method: "GET" });
 }
 
+/** Alias for admin support inbox — same as `listTickets` (admin sees all tickets). */
+export const getAllTickets = listTickets;
+
 export async function getTicket(ticketId: string): Promise<TicketDetail> {
   return apiRequest<TicketDetail>(`/tickets/${ticketId}`, { method: "GET" });
 }
@@ -441,4 +497,222 @@ export async function applyJob(
     method: "POST",
     json: body as unknown as Json,
   });
+}
+
+export async function getMyApplications(): Promise<ApplicationOut[]> {
+  return apiRequest<ApplicationOut[]>("/users/me/applications", { method: "GET" });
+}
+
+export async function updateProfile(body: { full_name?: string }): Promise<UserPublic> {
+  return apiRequest<UserPublic>("/users/me", { method: "PATCH", json: body as Json });
+}
+
+export async function closeTicket(ticketId: string): Promise<TicketOut> {
+  return apiRequest<TicketOut>(`/tickets/${ticketId}/close`, { method: "POST" });
+}
+
+/** Admin: create a bookable mentor time slot. */
+export async function createTimeSlot(body: {
+  start_at: string;
+  end_at: string;
+  capacity: number;
+}): Promise<TimeSlotOut> {
+  return apiRequest<TimeSlotOut>("/time-slots", { method: "POST", json: body as Json });
+}
+
+/* -------------------------------------------------------------------------- */
+/* Admin                                                                      */
+/* -------------------------------------------------------------------------- */
+
+export type AdminStats = {
+  total_users: number;
+  total_courses: number;
+  active_enrollments: number;
+  tasks_submitted: number;
+  open_doubts: number;
+  booked_appointments: number;
+};
+
+export type TimeSeriesPoint = { date: string; value: number };
+
+export type AdminCharts = {
+  user_signups: TimeSeriesPoint[];
+  enrollments: TimeSeriesPoint[];
+  task_submissions: TimeSeriesPoint[];
+};
+
+export type AdminActivityItem = {
+  id: string;
+  type: string;
+  title: string;
+  subtitle: string | null;
+  created_at: string;
+};
+
+export type SubmissionWithUser = {
+  id: string;
+  task_id: string;
+  user_id: string;
+  user_email: string;
+  user_full_name: string;
+  file_url: string | null;
+  link_url: string | null;
+  submitted_at: string;
+  status: SubmissionStatus;
+  score: number | null;
+  feedback: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+};
+
+export async function getAdminStats(): Promise<AdminStats> {
+  return apiRequest<AdminStats>("/admin/stats", { method: "GET" });
+}
+
+export async function getAdminCharts(): Promise<AdminCharts> {
+  return apiRequest<AdminCharts>("/admin/charts", { method: "GET" });
+}
+
+export async function getAdminActivity(): Promise<{ items: AdminActivityItem[] }> {
+  return apiRequest<{ items: AdminActivityItem[] }>("/admin/activity", { method: "GET" });
+}
+
+export async function listUsers(): Promise<UserPublic[]> {
+  return apiRequest<UserPublic[]>("/users", { method: "GET" });
+}
+
+export async function updateUserAdmin(
+  userId: string,
+  body: { role?: UserRole; is_active?: boolean },
+): Promise<UserPublic> {
+  return apiRequest<UserPublic>(`/users/${userId}`, { method: "PATCH", json: body as Json });
+}
+
+export async function createCourseAdmin(body: {
+  title: string;
+  description?: string | null;
+  youtube_url: string;
+  is_free: boolean;
+  price?: string | number | null;
+  image_url?: string | null;
+}): Promise<CourseOut> {
+  return apiRequest<CourseOut>("/courses", { method: "POST", json: body as Json });
+}
+
+export async function updateCourseAdmin(
+  courseId: string,
+  body: {
+    title?: string;
+    description?: string | null;
+    is_free?: boolean;
+    price?: string | number | null;
+    youtube_url?: string | null;
+    image_url?: string | null;
+  },
+): Promise<CourseOut> {
+  return apiRequest<CourseOut>(`/courses/${courseId}`, { method: "PATCH", json: body as Json });
+}
+
+export async function uploadCourseCover(file: File): Promise<{ url: string }> {
+  const form = new FormData();
+  form.append("file", file);
+  const token = getStoredToken();
+  const headers = new Headers();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const url = `${getApiV1Url()}/uploads/course-cover`;
+  let res: Response;
+  try {
+    res = await fetch(url, { method: "POST", body: form, headers, credentials: "omit" });
+  } catch (err) {
+    throw new ApiError(0, formatClientError(err));
+  }
+  if (!res.ok) {
+    const detail = await parseErrorDetail(res);
+    throw new ApiError(res.status, detail);
+  }
+  return (await res.json()) as { url: string };
+}
+
+export async function deleteCourseAdmin(courseId: string): Promise<void> {
+  return apiRequest<void>(`/courses/${courseId}`, { method: "DELETE" });
+}
+
+export async function addCourseModule(
+  courseId: string,
+  body: { title: string; order_index?: number },
+): Promise<ModuleOut> {
+  return apiRequest<ModuleOut>(`/courses/${courseId}/modules`, {
+    method: "POST",
+    json: body as unknown as Json,
+  });
+}
+
+export async function addModuleLesson(
+  moduleId: string,
+  body: {
+    title: string;
+    content?: string | null;
+    order_index?: number;
+    duration_minutes?: number | null;
+  },
+): Promise<LessonOut> {
+  return apiRequest<LessonOut>(`/courses/modules/${moduleId}/lessons`, {
+    method: "POST",
+    json: body as unknown as Json,
+  });
+}
+
+export async function createTaskAdmin(body: {
+  title: string;
+  description?: string | null;
+  course_id?: string | null;
+  lesson_id?: string | null;
+  due_at?: string | null;
+}): Promise<TaskOut> {
+  return apiRequest<TaskOut>("/tasks", { method: "POST", json: body as unknown as Json });
+}
+
+export async function listAllSubmissions(): Promise<SubmissionWithUser[]> {
+  return apiRequest<SubmissionWithUser[]>("/tasks/submissions", { method: "GET" });
+}
+
+export async function reviewSubmissionAdmin(
+  submissionId: string,
+  body: {
+    score?: number | null;
+    feedback?: string | null;
+    status: SubmissionStatus;
+  },
+): Promise<SubmissionOut> {
+  return apiRequest<SubmissionOut>(`/tasks/submissions/${submissionId}/review`, {
+    method: "PATCH",
+    json: body as Json,
+  });
+}
+
+export async function createJobAdmin(body: {
+  title: string;
+  description?: string | null;
+  company?: string | null;
+  location?: string | null;
+  closes_at?: string | null;
+}): Promise<JobOut> {
+  return apiRequest<JobOut>("/jobs", { method: "POST", json: body as Json });
+}
+
+export async function updateJobAdmin(
+  jobId: string,
+  body: {
+    title?: string;
+    description?: string | null;
+    company?: string | null;
+    location?: string | null;
+    closes_at?: string | null;
+  },
+): Promise<JobOut> {
+  return apiRequest<JobOut>(`/jobs/${jobId}`, { method: "PATCH", json: body as Json });
+}
+
+export async function deleteJobAdmin(jobId: string): Promise<void> {
+  return apiRequest<void>(`/jobs/${jobId}`, { method: "DELETE" });
 }

@@ -20,6 +20,9 @@
 # production
 /build
 
+# API uploads (course covers, etc.)
+backend/uploads/
+
 # misc
 .DS_Store
 *.pem

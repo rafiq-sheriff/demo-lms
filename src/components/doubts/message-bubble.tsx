@@ -14,24 +14,28 @@ function formatMessageTime(iso: string): string {
 
 export type MessageBubbleProps = {
   message: DoubtMessage;
-  /** Label shown for mentor (e.g. "Mentor") and student (e.g. "You") */
+  /** Label shown for admin (e.g. "Support") and student (e.g. "You") */
   senderLabel: Record<MessageSender, string>;
+  /** Who is viewing the thread — controls left/right alignment (WhatsApp-style). */
+  viewerRole: "student" | "admin";
 };
 
-export function MessageBubble({ message, senderLabel }: MessageBubbleProps) {
-  const isStudent = message.sender === "student";
+export function MessageBubble({ message, senderLabel, viewerRole }: MessageBubbleProps) {
+  const alignEnd =
+    (viewerRole === "student" && message.sender === "student") ||
+    (viewerRole === "admin" && message.sender === "admin");
 
   return (
     <div
       className={cn(
         "flex w-full max-w-[min(100%,36rem)] flex-col gap-1",
-        isStudent ? "ml-auto items-end" : "mr-auto items-start"
+        alignEnd ? "ml-auto items-end" : "mr-auto items-start"
       )}
     >
       <div
         className={cn(
           "rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed shadow-sm",
-          isStudent
+          alignEnd
             ? "rounded-br-md bg-primary text-primary-foreground"
             : "rounded-bl-md border border-border/60 bg-muted text-foreground"
         )}
@@ -41,7 +45,7 @@ export function MessageBubble({ message, senderLabel }: MessageBubbleProps) {
       <div
         className={cn(
           "flex items-center gap-2 px-1 text-[11px] text-muted-foreground",
-          isStudent ? "justify-end" : "justify-start"
+          alignEnd ? "justify-end" : "justify-start"
         )}
       >
         <span className="font-medium">{senderLabel[message.sender]}</span>

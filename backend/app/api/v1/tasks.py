@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, require_admin
 from app.db.session import get_db
-from app.models.course import Course, Lesson
+from app.models.course import Course, Enrollment, Lesson, Module
 from app.models.enums import SubmissionStatus
 from app.models.task import Submission, Task
 from app.models.user import User
@@ -17,6 +17,7 @@ from app.schemas.task import (
     SubmissionCreate,
     SubmissionOut,
     SubmissionReview,
+    SubmissionWithUserOut,
     TaskCreate,
     TaskOut,
 )
@@ -72,6 +73,40 @@ async def list_tasks(
     return list(result.scalars().all())
 
 
+@router.get("/submissions", response_model=list[SubmissionWithUserOut])
+async def list_all_submissions(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> list[SubmissionWithUserOut]:
+    result = await db.execute(
+        select(Submission, User)
+        .select_from(Submission)
+        .join(User, Submission.user_id == User.id)
+        .order_by(Submission.submitted_at.desc())
+        .limit(500)
+    )
+    out: list[SubmissionWithUserOut] = []
+    for sub, usr in result.all():
+        out.append(
+            SubmissionWithUserOut(
+                id=sub.id,
+                task_id=sub.task_id,
+                user_id=sub.user_id,
+                user_email=usr.email,
+                user_full_name=usr.full_name,
+                file_url=sub.file_url,
+                link_url=sub.link_url,
+                submitted_at=sub.submitted_at,
+                status=sub.status,
+                score=sub.score,
+                feedback=sub.feedback,
+                reviewed_by=sub.reviewed_by,
+                reviewed_at=sub.reviewed_at,
+            )
+        )
+    return out
+
+
 @router.post("/{task_id}/submit", response_model=SubmissionOut, status_code=status.HTTP_201_CREATED)
 async def submit_task(
     task_id: uuid.UUID,
@@ -87,6 +122,26 @@ async def submit_task(
     task = await db.get(Task, task_id)
     if task is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    target_course_id = task.course_id
+    if target_course_id is None and task.lesson_id is not None:
+        lesson_with_module = await db.execute(
+            select(Lesson, Module).join(Module, Lesson.module_id == Module.id).where(Lesson.id == task.lesson_id)
+        )
+        row = lesson_with_module.one_or_none()
+        if row is not None:
+            target_course_id = row[1].course_id
+    if target_course_id is not None:
+        enrollment = await db.execute(
+            select(Enrollment).where(
+                Enrollment.user_id == current.id,
+                Enrollment.course_id == target_course_id,
+            )
+        )
+        if enrollment.scalar_one_or_none() is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Enroll in the course before submitting this task",
+            )
 
     result = await db.execute(
         select(Submission).where(Submission.task_id == task_id, Submission.user_id == current.id)

@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
-from pydantic import Field
+from pydantic import Field, field_validator, model_validator
+
+from app.utils.youtube import extract_youtube_id
 
 from app.schemas.common import ORMModel
 
@@ -13,7 +16,54 @@ from app.schemas.common import ORMModel
 class CourseCreate(ORMModel):
     title: str = Field(min_length=1, max_length=255)
     description: str | None = None
+    youtube_url: str = Field(min_length=1, max_length=512)
     is_free: bool = False
+    price: Decimal | None = None
+    image_url: str | None = Field(default=None, max_length=2048)
+
+    @field_validator("youtube_url")
+    @classmethod
+    def validate_youtube(cls, v: str) -> str:
+        s = v.strip()
+        if extract_youtube_id(s) is None:
+            raise ValueError("Enter a valid YouTube video URL")
+        return s
+
+    @model_validator(mode="after")
+    def validate_price(self) -> CourseCreate:
+        if self.is_free:
+            object.__setattr__(self, "price", None)
+        else:
+            if self.price is None or self.price <= 0:
+                raise ValueError("Paid courses require a price greater than 0")
+        return self
+
+
+class CourseUpdate(ORMModel):
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = None
+    is_free: bool | None = None
+    price: Decimal | None = None
+    youtube_url: str | None = Field(default=None, max_length=512)
+    image_url: str | None = Field(default=None, max_length=2048)
+
+    @field_validator("youtube_url")
+    @classmethod
+    def validate_youtube_opt(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        s = v.strip()
+        if not s:
+            return None
+        if extract_youtube_id(s) is None:
+            raise ValueError("Enter a valid YouTube video URL")
+        return s
+
+    @model_validator(mode="after")
+    def validate_price(self) -> CourseUpdate:
+        if self.is_free is True:
+            object.__setattr__(self, "price", None)
+        return self
 
 
 class CourseOut(ORMModel):
@@ -21,6 +71,9 @@ class CourseOut(ORMModel):
     title: str
     description: str | None
     is_free: bool
+    price: Decimal | None = None
+    youtube_url: str | None = None
+    image_url: str | None = None
     instructor_id: uuid.UUID
     created_at: datetime
     updated_at: datetime
@@ -81,3 +134,10 @@ class EnrollmentOut(ORMModel):
     user_id: uuid.UUID
     course_id: uuid.UUID
     enrolled_at: datetime
+
+
+class CourseProgressSummaryOut(ORMModel):
+    course_id: uuid.UUID
+    total_lessons: int
+    completed_lessons: int
+    progress_percent: int

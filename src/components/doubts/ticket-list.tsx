@@ -24,14 +24,21 @@ export type TicketListProps = {
   tickets: DoubtTicket[];
   activeId: string | null;
   onSelect: (id: string) => void;
+  variant?: "student" | "admin";
 };
 
-export function TicketList({ tickets, activeId, onSelect }: TicketListProps) {
+export function TicketList({ tickets, activeId, onSelect, variant = "student" }: TicketListProps) {
+  const heading = variant === "admin" ? "Support inbox" : "Your doubts";
+  const sub =
+    variant === "admin"
+      ? `${tickets.length} student threads`
+      : `${tickets.length} conversations`;
+
   return (
     <div className="flex min-h-0 flex-col rounded-xl border border-border/80 bg-card shadow-sm ring-1 ring-foreground/[0.04]">
       <div className="shrink-0 border-b border-border/80 px-4 py-3">
-        <h2 className="text-sm font-semibold text-foreground">Your doubts</h2>
-        <p className="text-xs text-muted-foreground">{tickets.length} conversations</p>
+        <h2 className="text-sm font-semibold text-foreground">{heading}</h2>
+        <p className="text-xs text-muted-foreground">{sub}</p>
       </div>
       <ul
         className="max-h-[40vh] min-h-0 flex-1 overflow-y-auto overscroll-contain md:max-h-none"
@@ -61,6 +68,9 @@ export function TicketList({ tickets, activeId, onSelect }: TicketListProps) {
                   </span>
                   <StatusPill status={t.status} />
                 </div>
+                {variant === "admin" && t.studentLabel ? (
+                  <p className="text-[11px] font-medium text-primary/90">{t.studentLabel}</p>
+                ) : null}
                 <p className="line-clamp-2 text-xs text-muted-foreground">{preview}</p>
               </button>
             </li>
@@ -70,7 +80,9 @@ export function TicketList({ tickets, activeId, onSelect }: TicketListProps) {
       {tickets.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-12 text-center">
           <MessageCircle className="h-8 w-8 text-muted-foreground/60" aria-hidden />
-          <p className="text-sm text-muted-foreground">No doubts yet</p>
+          <p className="text-sm text-muted-foreground">
+            {variant === "admin" ? "No open threads" : "No doubts yet"}
+          </p>
         </div>
       ) : null}
     </div>

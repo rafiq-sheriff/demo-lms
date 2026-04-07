@@ -14,6 +14,7 @@ type DashboardSidebarProps = {
 
 export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
   const pathname = usePathname();
+  const navItems = dashboardNavItems;
 
   return (
     <>
@@ -30,25 +31,25 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border/80 bg-card shadow-lg transition-transform duration-200 ease-out",
+          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-200 bg-slate-50 shadow-lg transition-transform duration-200 ease-out",
           "lg:sticky lg:top-0 lg:z-0 lg:h-screen lg:translate-x-0 lg:self-start lg:shadow-none",
           open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
-        <div className="flex h-14 items-center justify-between gap-2 border-b border-border/80 px-4 lg:h-16">
+        <div className="flex h-14 items-center justify-between gap-2 border-b border-slate-200 px-4 lg:h-16">
           <Link
             href="/dashboard"
             className="flex min-w-0 items-center gap-2 font-semibold tracking-tight text-foreground"
             onClick={onClose}
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-xs font-bold text-primary-foreground">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-xs font-bold text-primary-foreground">
               AA
             </span>
             <span className="truncate">Analytics Avenue</span>
           </Link>
           <button
             type="button"
-            className="inline-flex rounded-lg p-2 text-muted-foreground hover:bg-muted lg:hidden"
+            className="inline-flex rounded-lg p-2 text-muted-foreground hover:bg-slate-100 lg:hidden"
             onClick={onClose}
             aria-label="Close menu"
           >
@@ -58,7 +59,7 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
 
         <nav className="flex-1 overflow-y-auto p-3" aria-label="Dashboard navigation">
           <ul className="space-y-1">
-            {dashboardNavItems.map((item) => {
+            {navItems.map((item) => {
               const Icon = item.icon;
               const active =
                 pathname === item.href ||
@@ -75,8 +76,8 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
                     className={cn(
                       "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
                       active
-                        ? "bg-primary text-primary-foreground shadow-md ring-1 ring-primary/20"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        ? "bg-indigo-50 text-indigo-600 shadow-sm"
+                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                     )}
                     aria-current={active ? "page" : undefined}
                   >

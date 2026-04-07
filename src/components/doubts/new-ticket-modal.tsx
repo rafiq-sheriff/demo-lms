@@ -48,7 +48,7 @@ export function NewTicketModal({ onClose, onSubmit }: NewTicketModalProps) {
       return;
     }
     if (!d) {
-      setError("Describe your doubt so a mentor can help.");
+      setError("Describe your doubt so support can help.");
       return;
     }
     onSubmit({ title: t, description: d });
@@ -77,7 +77,7 @@ export function NewTicketModal({ onClose, onSubmit }: NewTicketModalProps) {
               New doubt
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Start a thread with a mentor. You can add more detail in chat after submitting.
+              Start a thread with support. You can add more detail in chat after submitting.
             </p>
           </div>
           <button

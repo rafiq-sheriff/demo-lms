@@ -13,6 +13,7 @@ class TimeSlotCreate(ORMModel):
     start_at: datetime
     end_at: datetime
     capacity: int = Field(ge=1, le=1000)
+    mentor_id: uuid.UUID | None = None
 
 
 class TimeSlotOut(ORMModel):
@@ -21,6 +22,7 @@ class TimeSlotOut(ORMModel):
     end_at: datetime
     capacity: int
     created_by: uuid.UUID | None
+    mentor_id: uuid.UUID | None
     created_at: datetime
 
 

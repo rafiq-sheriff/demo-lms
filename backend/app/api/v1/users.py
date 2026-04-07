@@ -9,10 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user, require_admin
 from app.db.session import get_db
 from app.models.enums import UserRole
+from app.models.job import Application
 from app.models.task import Submission
 from app.models.user import User
+from app.schemas.job import ApplicationOut
 from app.schemas.task import SubmissionOut
-from app.schemas.user import AdminRoleUpdate, UserProfile, UserUpdate
+from app.schemas.user import AdminRoleUpdate, UserAdminUpdate, UserProfile, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -30,6 +32,19 @@ async def my_submissions(
     return list(result.scalars().all())
 
 
+@router.get("/me/applications", response_model=list[ApplicationOut])
+async def my_applications(
+    db: AsyncSession = Depends(get_db),
+    current: User = Depends(get_current_user),
+) -> list[Application]:
+    result = await db.execute(
+        select(Application)
+        .where(Application.user_id == current.id)
+        .order_by(Application.applied_at.desc())
+    )
+    return list(result.scalars().all())
+
+
 @router.patch("/me", response_model=UserProfile)
 async def update_me(
     body: UserUpdate,
@@ -41,6 +56,35 @@ async def update_me(
     await db.flush()
     await db.refresh(current)
     return current
+
+
+@router.get("", response_model=list[UserProfile])
+async def list_users(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> list[User]:
+    result = await db.execute(select(User).order_by(User.created_at.desc()))
+    return list(result.scalars().all())
+
+
+@router.patch("/{user_id}", response_model=UserProfile)
+async def admin_update_user(
+    user_id: uuid.UUID,
+    body: UserAdminUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> User:
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if body.role is not None:
+        user.role = body.role
+    if body.is_active is not None:
+        user.is_active = body.is_active
+    await db.flush()
+    await db.refresh(user)
+    return user
 
 
 @router.patch("/{user_id}/role", response_model=UserProfile)

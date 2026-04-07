@@ -39,9 +39,6 @@ export type CourseDetail = {
   };
 };
 
-/** Default preview when a lesson has no embed. */
-const DEFAULT_EMBED_ID = "ScMzIvxBSi4";
-
 /** Curated educational videos (data, analytics, ML, SQL, Python) — rotated across lessons. */
 const YOUTUBE_RELATED_POOL = [
   "HXV3zeQKqGY",

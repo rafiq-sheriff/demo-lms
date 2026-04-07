@@ -51,3 +51,19 @@ class SubmissionOut(ORMModel):
     feedback: str | None
     reviewed_by: uuid.UUID | None
     reviewed_at: datetime | None
+
+
+class SubmissionWithUserOut(ORMModel):
+    id: uuid.UUID
+    task_id: uuid.UUID
+    user_id: uuid.UUID
+    user_email: str
+    user_full_name: str
+    file_url: str | None
+    link_url: str | None
+    submitted_at: datetime
+    status: SubmissionStatus
+    score: int | None
+    feedback: str | None
+    reviewed_by: uuid.UUID | None
+    reviewed_at: datetime | None

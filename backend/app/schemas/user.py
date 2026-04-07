@@ -22,3 +22,8 @@ class UserUpdate(ORMModel):
 
 class AdminRoleUpdate(ORMModel):
     role: UserRole
+
+
+class UserAdminUpdate(ORMModel):
+    role: UserRole | None = None
+    is_active: bool | None = None

@@ -1,6 +1,6 @@
 export type TicketStatus = "open" | "closed";
 
-export type MessageSender = "student" | "mentor";
+export type MessageSender = "student" | "admin";
 
 export type DoubtMessage = {
   id: string;
@@ -16,6 +16,8 @@ export type DoubtTicket = {
   title: string;
   status: TicketStatus;
   messages: DoubtMessage[];
+  /** Admin inbox: student display name or email */
+  studentLabel?: string;
 };
 
 export function truncatePreview(text: string, max = 72): string {
@@ -48,7 +50,7 @@ export const initialDoubtTickets: DoubtTicket[] = [
         ticketId: "dk-1",
         body:
           "Fit on training data only for each CV fold—never on validation rows within that fold. I’ll add a one-pager to the module resources.",
-        sender: "mentor",
+        sender: "admin",
         at: "2026-04-05T14:05:00.000Z",
       },
       {
@@ -92,7 +94,7 @@ export const initialDoubtTickets: DoubtTicket[] = [
         ticketId: "dk-3",
         body:
           "Summary and key metrics together carry most of the score; appendix is supporting detail. See the rubric PDF page 2.",
-        sender: "mentor",
+        sender: "admin",
         at: "2026-03-28T16:20:00.000Z",
       },
     ],

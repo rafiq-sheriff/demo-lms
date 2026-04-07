@@ -17,6 +17,14 @@ class JobCreate(ORMModel):
     closes_at: datetime | None = None
 
 
+class JobUpdate(ORMModel):
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = None
+    company: str | None = Field(default=None, max_length=255)
+    location: str | None = Field(default=None, max_length=255)
+    closes_at: datetime | None = None
+
+
 class JobOut(ORMModel):
     id: uuid.UUID
     title: str

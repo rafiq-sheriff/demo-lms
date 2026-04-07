@@ -8,23 +8,36 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { DoubtTicket, MessageSender } from "@/lib/doubts-data";
 
-const SENDER_LABEL: Record<MessageSender, string> = {
-  student: "You",
-  mentor: "Mentor",
-};
+function labelsFor(viewerRole: "student" | "admin"): Record<MessageSender, string> {
+  if (viewerRole === "student") {
+    return { student: "You", admin: "Support" };
+  }
+  return { student: "Student", admin: "You" };
+}
 
 export type ChatWindowProps = {
   ticket: DoubtTicket | null;
   onSendMessage: (body: string) => void;
+  onCloseTicket?: () => void;
+  closePending?: boolean;
   className?: string;
+  viewerRole: "student" | "admin";
 };
 
-export function ChatWindow({ ticket, onSendMessage, className }: ChatWindowProps) {
+export function ChatWindow({
+  ticket,
+  onSendMessage,
+  onCloseTicket,
+  closePending,
+  className,
+  viewerRole,
+}: ChatWindowProps) {
   const [draft, setDraft] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const messages = ticket?.messages ?? [];
+  const senderLabel = labelsFor(viewerRole);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -47,11 +60,25 @@ export function ChatWindow({ ticket, onSendMessage, className }: ChatWindowProps
     >
       {ticket ? (
         <>
-          <header className="shrink-0 border-b border-border/80 px-4 py-3 sm:px-5">
-            <h2 className="text-base font-semibold leading-snug text-foreground">{ticket.title}</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {ticket.status === "open" ? "Open thread" : "Closed thread (read-only)"}
-            </p>
+          <header className="flex shrink-0 flex-col gap-2 border-b border-border/80 px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:px-5">
+            <div className="min-w-0">
+              <h2 className="text-base font-semibold leading-snug text-foreground">{ticket.title}</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {ticket.status === "open" ? "Open thread" : "Closed thread (read-only)"}
+              </p>
+            </div>
+            {ticket.status === "open" && onCloseTicket ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0 rounded-xl"
+                disabled={closePending}
+                onClick={onCloseTicket}
+              >
+                {closePending ? "Closing…" : "Close thread"}
+              </Button>
+            ) : null}
           </header>
 
           <div
@@ -59,7 +86,7 @@ export function ChatWindow({ ticket, onSendMessage, className }: ChatWindowProps
             className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-3 py-4 sm:px-5"
           >
             {messages.map((m) => (
-              <MessageBubble key={m.id} message={m} senderLabel={SENDER_LABEL} />
+              <MessageBubble key={m.id} message={m} senderLabel={senderLabel} viewerRole={viewerRole} />
             ))}
             <div ref={bottomRef} aria-hidden className="h-px shrink-0" />
           </div>

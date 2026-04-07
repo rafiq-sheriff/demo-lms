@@ -25,7 +25,7 @@ function SearchField({ id }: { id: string }) {
         id={id}
         type="search"
         placeholder="Search courses, tasks…"
-        className="h-10 w-full rounded-xl border border-border/80 bg-muted/40 py-2 pl-9 pr-3 text-sm text-foreground outline-none ring-0 transition placeholder:text-muted-foreground focus:border-primary/40 focus:bg-background focus:ring-2 focus:ring-primary/20"
+        className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-sm text-slate-900 outline-none ring-0 transition placeholder:text-slate-500 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100"
       />
     </div>
   );
@@ -62,12 +62,12 @@ function UserMenu() {
         onClick={() => setOpen((v) => !v)}
         className={cn(
           buttonVariants({ variant: "outline", size: "sm" }),
-          "gap-2 rounded-xl border-border/80 px-2 sm:px-3"
+          "gap-2 rounded-xl border-slate-200 bg-white px-2 sm:px-3"
         )}
         aria-expanded={open}
         aria-haspopup="menu"
       >
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-xs font-semibold text-primary">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-400 to-purple-500 text-xs font-semibold text-white">
           {initials}
         </span>
         <span className="hidden max-w-[8rem] truncate text-left text-sm font-medium md:inline">
@@ -79,28 +79,21 @@ function UserMenu() {
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 mt-2 w-52 rounded-xl border border-border/80 bg-card py-1 shadow-lg ring-1 ring-foreground/[0.04]"
+          className="absolute right-0 mt-2 w-52 rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
         >
           <Link
             href="/dashboard/profile"
             role="menuitem"
-            className="block px-3 py-2 text-sm text-foreground hover:bg-muted"
+            className="block px-3 py-2 text-sm text-slate-900 hover:bg-slate-50"
             onClick={() => setOpen(false)}
           >
-            Profile
+            Profile & account
           </Link>
+          <hr className="my-1 border-slate-200" />
           <button
             type="button"
             role="menuitem"
-            className="w-full px-3 py-2 text-left text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            Account settings
-          </button>
-          <hr className="my-1 border-border/60" />
-          <button
-            type="button"
-            role="menuitem"
-            className="w-full px-3 py-2 text-left text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="w-full px-3 py-2 text-left text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900"
             onClick={() => {
               setOpen(false);
               logout();
@@ -119,7 +112,7 @@ export function DashboardTopbar({ onMenuOpen }: DashboardTopbarProps) {
   const title = getDashboardPageTitle(pathname);
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border/80 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+    <header className="sticky top-0 z-30 border-b border-slate-200 bg-white">
       <div className="flex h-14 items-center gap-3 px-4 sm:gap-4 sm:px-6">
         <button
           type="button"
@@ -148,7 +141,7 @@ export function DashboardTopbar({ onMenuOpen }: DashboardTopbarProps) {
           type="button"
           className={cn(
             buttonVariants({ variant: "ghost", size: "icon-sm" }),
-            "relative shrink-0 text-muted-foreground hover:text-foreground"
+            "relative shrink-0 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
           )}
           aria-label="Notifications"
         >

@@ -15,6 +15,8 @@ export type CourseCardProps = {
   programHref?: string;
   /** Free tier — shows a “Free” badge on the card. */
   isFree?: boolean;
+  /** Cover image URL from the API (optional). */
+  imageUrl?: string | null;
   /** Catalog variant: image header, overlay, stronger hover. */
   variant?: "default" | "catalog";
 };
@@ -37,6 +39,7 @@ export function CourseCard({
   courseId,
   programHref,
   isFree = false,
+  imageUrl,
   variant = "default",
 }: CourseCardProps) {
   const href = programHref ?? `/course/${courseId}`;
@@ -56,10 +59,19 @@ export function CourseCard({
           isCatalog ? "aspect-[16/10]" : "aspect-[2/1]"
         )}
       >
-        <div
-          className="absolute inset-0 transition duration-300 group-hover:brightness-[1.03]"
-          style={{ background: gradientForId(courseId) }}
-        />
+        {imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imageUrl}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:brightness-[1.03]"
+          />
+        ) : (
+          <div
+            className="absolute inset-0 transition duration-300 group-hover:brightness-[1.03]"
+            style={{ background: gradientForId(courseId) }}
+          />
+        )}
         <div className="absolute inset-0 bg-[linear-gradient(to_top,rgb(0_0_0/0.5),transparent_55%)]" />
         <div className="absolute right-3 top-3 sm:right-4 sm:top-4">
           <span

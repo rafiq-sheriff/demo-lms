@@ -10,6 +10,14 @@ import { cn } from "@/lib/utils";
 
 type SortKey = "newest" | "title";
 
+function formatCatalogPrice(course: CourseOut): string {
+  if (course.is_free) return "Free";
+  if (course.price == null || course.price === "") return "Paid";
+  const n = Number(course.price);
+  if (Number.isNaN(n)) return String(course.price);
+  return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(n);
+}
+
 function sortCourses(list: CourseOut[], sort: SortKey): CourseOut[] {
   const out = [...list];
   if (sort === "newest") {
@@ -132,10 +140,11 @@ export function CoursesCatalog() {
                 variant="catalog"
                 courseId={course.id}
                 title={course.title}
-                price={course.is_free ? "Free" : "Premium"}
+                price={formatCatalogPrice(course)}
                 rating={4.8}
                 lessons={course.lesson_count ?? 0}
                 isFree={course.is_free}
+                imageUrl={course.image_url}
               />
             ))}
           </div>

@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60
     cors_origins: str = "http://localhost:3000"
     debug: bool = False
+    public_base_url: str = Field(
+        default="http://127.0.0.1:8000",
+        description="Public origin for absolute URLs to uploaded files (no trailing slash).",
+    )
 
     @model_validator(mode="after")
     def build_database_url_from_supabase_env(self) -> Self:

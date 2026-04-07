@@ -3,7 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 function backendOrigin(): string {
-  const b = process.env.BACKEND_URL?.trim().replace(/\/$/, "");
+  const b =
+    process.env.BACKEND_URL?.trim().replace(/\/$/, "") ||
+    process.env.BACKEND_INTERNAL_URL?.trim().replace(/\/$/, "");
   return b || "http://127.0.0.1:8000";
 }
 
@@ -54,6 +56,7 @@ async function proxy(req: NextRequest, pathSegments: string[]) {
       headers: forwardRequestHeaders(req.headers),
       body,
       cache: "no-store",
+      signal: AbortSignal.timeout(26_000),
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

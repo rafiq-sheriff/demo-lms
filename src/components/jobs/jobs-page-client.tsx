@@ -7,7 +7,13 @@ import { toast } from "sonner";
 import { JobCard } from "@/components/jobs/job-card";
 import { JobDetailModal } from "@/components/jobs/job-detail-modal";
 import { JobFilters, type JobFilterState } from "@/components/jobs/job-filters";
-import { ApiError, applyJob, getJobs, type JobOut } from "@/lib/api";
+import {
+  ApiError,
+  applyJob,
+  getJobs,
+  getMyApplications,
+  type JobOut,
+} from "@/lib/api";
 import type { JobListing, JobType } from "@/lib/jobs-data";
 
 const defaultFilters: JobFilterState = {
@@ -60,9 +66,31 @@ export function JobsPageClient() {
     queryFn: getJobs,
   });
 
+  const appsQuery = useQuery({
+    queryKey: ["my-applications"],
+    queryFn: getMyApplications,
+  });
+
+  const appliedByJobId = useMemo(() => {
+    const m = new Map<string, string | null>();
+    for (const a of appsQuery.data ?? []) {
+      m.set(a.job_id, a.applied_at);
+    }
+    return m;
+  }, [appsQuery.data]);
+
   const listings = useMemo(
-    () => (jobsQuery.data ?? []).map(apiJobToListing),
-    [jobsQuery.data],
+    () =>
+      (jobsQuery.data ?? []).map((j) => {
+        const base = apiJobToListing(j);
+        const at = appliedByJobId.get(j.id);
+        return {
+          ...base,
+          applied: at !== undefined,
+          appliedAt: at ?? null,
+        };
+      }),
+    [jobsQuery.data, appliedByJobId],
   );
 
   const applyMut = useMutation({
@@ -73,6 +101,7 @@ export function JobsPageClient() {
       }),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["jobs"] });
+      await qc.invalidateQueries({ queryKey: ["my-applications"] });
       toast.success("Application submitted");
       setDetailJob(null);
     },
@@ -159,7 +188,10 @@ export function JobsPageClient() {
       <JobDetailModal
         job={detailJob}
         onClose={() => setDetailJob(null)}
-        onApply={(job) => applyMut.mutate(job.id)}
+        onApply={(job) => {
+          if (job.applied) return;
+          applyMut.mutate(job.id);
+        }}
         applyPending={applyMut.isPending}
       />
     </div>

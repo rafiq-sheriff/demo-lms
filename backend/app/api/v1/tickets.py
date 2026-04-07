@@ -6,9 +6,9 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload, selectinload
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_student
 from app.db.session import get_db
 from app.models.enums import TicketStatus, UserRole
 from app.models.ticket import Message, Ticket
@@ -18,11 +18,23 @@ from app.schemas.ticket import MessageCreate, MessageOut, TicketCreate, TicketDe
 router = APIRouter(prefix="/tickets", tags=["tickets"])
 
 
+def _ticket_to_out(ticket: Ticket, *, for_admin: bool) -> TicketOut:
+    base = TicketOut.model_validate(ticket)
+    if for_admin and ticket.user:
+        return base.model_copy(
+            update={
+                "student_email": ticket.user.email,
+                "student_full_name": ticket.user.full_name,
+            }
+        )
+    return base
+
+
 @router.post("", response_model=TicketDetail, status_code=status.HTTP_201_CREATED)
 async def create_ticket(
     body: TicketCreate,
     db: AsyncSession = Depends(get_db),
-    current: User = Depends(get_current_user),
+    current: User = Depends(require_student),
 ) -> Ticket:
     ticket = Ticket(user_id=current.id, subject=body.subject, status=TicketStatus.open)
     db.add(ticket)
@@ -44,14 +56,20 @@ async def list_tickets(
     db: AsyncSession = Depends(get_db),
     current: User = Depends(get_current_user),
     status_filter: TicketStatus | None = Query(default=None, alias="status"),
-) -> list[Ticket]:
-    q = select(Ticket).order_by(Ticket.created_at.desc())
+) -> list[TicketOut]:
+    q = (
+        select(Ticket)
+        .options(joinedload(Ticket.user))
+        .order_by(Ticket.created_at.desc())
+    )
     if current.role != UserRole.admin:
         q = q.where(Ticket.user_id == current.id)
     if status_filter is not None:
         q = q.where(Ticket.status == status_filter)
     result = await db.execute(q)
-    return list(result.scalars().all())
+    rows = result.unique().scalars().all()
+    is_admin = current.role == UserRole.admin
+    return [_ticket_to_out(t, for_admin=is_admin) for t in rows]
 
 
 @router.get("/{ticket_id}", response_model=TicketDetail)

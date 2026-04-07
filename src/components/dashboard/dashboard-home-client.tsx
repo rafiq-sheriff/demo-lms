@@ -1,13 +1,13 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { ArrowRight, BookMarked, CheckCircle2, Clock } from "lucide-react";
 
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { buttonVariants } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
-import { getMyCourses, getMySubmissions, getTasks } from "@/lib/api";
+import { getMyCourseProgress, getMyCourses, getMySubmissions, getTasks } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 function formatDue(iso: string | null | undefined): string {
@@ -25,6 +25,14 @@ export function DashboardHomeClient() {
   const tasks = useQuery({ queryKey: ["tasks"], queryFn: () => getTasks() });
   const subs = useQuery({ queryKey: ["my-submissions"], queryFn: getMySubmissions });
 
+  const progressQueries = useQueries({
+    queries: (myCourses.data ?? []).map((c) => ({
+      queryKey: ["course-progress", c.id],
+      queryFn: () => getMyCourseProgress(c.id),
+      enabled: Boolean(myCourses.data?.length),
+    })),
+  });
+
   const firstName = user?.full_name?.split(/\s+/)[0] ?? "there";
 
   const upcomingTasks = (tasks.data ?? []).slice(0, 4).map((t) => ({
@@ -33,11 +41,27 @@ export function DashboardHomeClient() {
     course: "Your program",
   }));
 
-  const progressCourses = (myCourses.data ?? []).slice(0, 3).map((c) => ({
-    title: c.title,
-    progress: 0,
-    next: "Open the player to start",
-  }));
+  const progressList = (myCourses.data ?? []).slice(0, 3);
+  const progressCourses = progressList.map((c, i) => {
+    const prog = progressQueries[i]?.data ?? [];
+    const completed = prog.filter((p) => p.progress_percent >= 100 || p.completed_at).length;
+    const total = Math.max(c.lesson_count ?? 0, 0);
+    const progress = total === 0 ? 0 : Math.round((completed / total) * 100);
+    return {
+      id: c.id,
+      title: c.title,
+      progress,
+      next:
+        total === 0
+          ? "No lessons yet"
+          : progress >= 100
+            ? "Course complete — review anytime"
+            : "Open the player to continue",
+    };
+  });
+
+  const progressSyncing =
+    progressList.length > 0 && progressQueries.some((q) => q.isPending || q.isLoading);
 
   const recentActivity = (subs.data ?? []).slice(0, 3).map((s) => ({
     text: `Submission updated for a task`,
@@ -92,17 +116,22 @@ export function DashboardHomeClient() {
             ) : (
               <ul className="space-y-5">
                 {progressCourses.map((c) => (
-                  <li key={c.title} className="space-y-2">
+                  <li key={c.id} className="space-y-2">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex min-w-0 items-start gap-2">
                         <BookMarked className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
                         <div className="min-w-0">
-                          <p className="font-medium leading-snug text-foreground">{c.title}</p>
+                          <Link
+                            href={`/dashboard/course/${c.id}`}
+                            className="font-medium leading-snug text-foreground hover:text-primary hover:underline"
+                          >
+                            {c.title}
+                          </Link>
                           <p className="text-xs text-muted-foreground">Next: {c.next}</p>
                         </div>
                       </div>
                       <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
-                        {c.progress}%
+                        {progressSyncing ? "…" : `${c.progress}%`}
                       </span>
                     </div>
                     <div

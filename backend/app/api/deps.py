@@ -45,3 +45,12 @@ def require_admin(current: User = Depends(get_current_user)) -> User:
     if current.role != UserRole.admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
     return current
+
+
+def require_student(current: User = Depends(get_current_user)) -> User:
+    if current.role != UserRole.student:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only students can create doubts",
+        )
+    return current

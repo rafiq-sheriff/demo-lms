@@ -35,23 +35,15 @@ export function AiProgramsSection() {
   const previewStatic = aiPrograms.slice(0, homeProgramsPreviewCount);
 
   return (
-    <section
-      id="programs"
-      className="relative border-b border-border/80 bg-gradient-to-b from-muted/40 via-background to-background"
-    >
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent"
-        aria-hidden
-      />
-      <div className="py-14 sm:py-16 lg:py-20">
+    <section id="programs" className="border-b border-border/70 bg-background py-14 sm:py-16 lg:py-20">
+      <div>
         <SectionContainer>
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl md:text-[2rem]">
-              AI Programs
+            <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+              Our Programs
             </h2>
-            <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground sm:mt-4 sm:text-base">
-              Structured tracks with clear pricing, ratings, and lesson counts—pick what matches your
-              goals.
+            <p className="mt-3 text-base leading-relaxed text-muted-foreground sm:text-lg">
+              Industry-aligned learning tracks with projects, mentorship, and placement support.
             </p>
           </div>
 
@@ -68,6 +60,7 @@ export function AiProgramsSection() {
                   rating={4.8}
                   lessons={c.lesson_count ?? 0}
                   isFree={c.is_free}
+                  variant="catalog"
                 />
               ))}
             </div>
@@ -84,6 +77,7 @@ export function AiProgramsSection() {
                   rating={course.rating}
                   lessons={course.lessons}
                   isFree={course.isFree === true}
+                  variant="catalog"
                 />
               ))}
             </div>
@@ -92,9 +86,9 @@ export function AiProgramsSection() {
           <div className="mt-10 flex justify-center sm:mt-12">
             <Link
               href="/courses"
-              className="inline-flex min-h-11 items-center justify-center rounded-full bg-primary px-8 text-sm font-semibold text-primary-foreground shadow-sm ring-1 ring-primary/10 transition hover:bg-primary/90 hover:shadow-md"
+              className="inline-flex min-h-12 items-center justify-center rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-8 text-sm font-semibold text-white shadow-sm transition hover:shadow-md"
             >
-              View All Programs
+              Explore All Programs
             </Link>
           </div>
         </SectionContainer>

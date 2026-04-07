@@ -22,6 +22,7 @@ export function CoursePlayerPageClient({ courseId }: Props) {
   });
 
   const staticFallback = getCourseDetail(courseId);
+  const shouldUseFallback = q.error instanceof ApiError ? q.error.status === 404 : false;
 
   if (q.isLoading) {
     return (
@@ -39,7 +40,7 @@ export function CoursePlayerPageClient({ courseId }: Props) {
     );
   }
 
-  if (!q.isLoading && staticFallback) {
+  if (!q.isLoading && staticFallback && shouldUseFallback) {
     return <CoursePlayerShell key={courseId} course={staticFallback} />;
   }
 

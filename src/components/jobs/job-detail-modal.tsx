@@ -14,6 +14,15 @@ type JobDetailModalProps = {
   applyPending?: boolean;
 };
 
+function formatAppliedAt(iso: string | null | undefined): string {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  } catch {
+    return iso;
+  }
+}
+
 export function JobDetailModal({ job, onClose, onApply, applyPending }: JobDetailModalProps) {
   const titleId = useId();
 
@@ -90,17 +99,31 @@ export function JobDetailModal({ job, onClose, onApply, applyPending }: JobDetai
           ) : null}
         </div>
 
-        <div className="border-t border-border/80 bg-muted/20 px-5 py-4">
+        <div className="flex flex-col gap-3 border-t border-border/80 bg-muted/20 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          {job.applied ? (
+            <p className="text-sm text-muted-foreground">
+              You applied on {formatAppliedAt(job.appliedAt) || "a recent date"}. We’ll follow up by email.
+            </p>
+          ) : (
+            <span className="text-sm text-muted-foreground">Ready to apply? Submit once per role.</span>
+          )}
           <Button
             type="button"
-            className="w-full rounded-xl shadow-sm sm:w-auto"
-            disabled={applyPending}
+            className="w-full shrink-0 rounded-xl shadow-sm sm:w-auto"
+            disabled={applyPending || Boolean(job.applied)}
             onClick={() => {
+              if (job?.applied) return;
               if (job && onApply) onApply(job);
               else onClose();
             }}
           >
-            {applyPending ? "Submitting…" : onApply ? "Apply" : "Close"}
+            {applyPending
+              ? "Submitting…"
+              : job.applied
+                ? "Applied"
+                : onApply
+                  ? "Apply"
+                  : "Close"}
           </Button>
         </div>
       </div>

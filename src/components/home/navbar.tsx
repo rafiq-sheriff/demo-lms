@@ -2,33 +2,36 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { Brain } from "lucide-react";
 
 import { useAuth } from "@/contexts/auth-context";
 import { navLinks } from "@/lib/home-data";
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const dashboardHref = user?.role === "admin" ? "/dashboard/admin" : "/dashboard";
+  const menuLinks = navLinks.slice(0, 4);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/80 bg-background/80 shadow-sm backdrop-blur-xl supports-[backdrop-filter]:bg-background/70">
+    <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-md">
       <nav className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
         <Link
           href="/"
           className="flex shrink-0 items-center gap-2.5 font-semibold tracking-tight text-foreground"
         >
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-violet-600 text-[13px] font-bold text-primary-foreground shadow-sm ring-1 ring-primary/10">
-            AA
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 text-primary-foreground shadow-sm">
+            <Brain className="h-5 w-5" />
           </span>
           <span className="hidden text-[15px] sm:inline">Analytics Avenue</span>
         </Link>
 
-        <div className="hidden flex-1 items-center justify-center gap-0.5 lg:flex">
-          {navLinks.map((link) => (
+        <div className="hidden flex-1 items-center justify-center gap-1 md:flex">
+          {menuLinks.map((link) => (
             <Link
               key={link.label}
               href={link.href}
-              className="rounded-lg px-2.5 py-2 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="rounded-lg px-3 py-2 text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               {link.label}
             </Link>
@@ -38,10 +41,10 @@ export function Navbar() {
         <div className="flex items-center gap-2">
           {!isLoading && isAuthenticated ? (
             <Link
-              href="/dashboard"
-              className="hidden rounded-xl border border-border/80 bg-card px-4 py-2 text-[13px] font-semibold text-foreground shadow-sm transition hover:bg-muted sm:inline-flex"
+              href={dashboardHref}
+              className="hidden rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-[13px] font-semibold text-white shadow-sm transition hover:shadow-md sm:inline-flex"
             >
-              Dashboard
+              {user?.role === "admin" ? "Admin" : "Dashboard"}
             </Link>
           ) : (
             <Link
@@ -55,7 +58,7 @@ export function Navbar() {
             type="button"
             aria-expanded={open}
             aria-label="Toggle menu"
-            className="inline-flex rounded-xl border border-border/80 bg-card p-2 text-foreground shadow-sm transition hover:bg-muted lg:hidden"
+            className="inline-flex rounded-xl border border-border/80 bg-card p-2 text-foreground shadow-sm transition hover:bg-muted md:hidden"
             onClick={() => setOpen((v) => !v)}
           >
             <svg
@@ -76,9 +79,9 @@ export function Navbar() {
       </nav>
 
       {open ? (
-        <div className="border-t border-border/60 bg-background px-4 py-3 lg:hidden">
+        <div className="border-t border-border/60 bg-background px-4 py-3 md:hidden">
           <div className="flex flex-col gap-0.5">
-            {navLinks.map((link) => (
+            {menuLinks.map((link) => (
               <Link
                 key={link.label}
                 href={link.href}
@@ -90,11 +93,11 @@ export function Navbar() {
             ))}
             {!isLoading && isAuthenticated ? (
               <Link
-                href="/dashboard"
+                href={dashboardHref}
                 className="mt-2 rounded-xl bg-primary px-3 py-2.5 text-center text-[13px] font-semibold text-primary-foreground transition hover:bg-primary/90"
                 onClick={() => setOpen(false)}
               >
-                Dashboard
+                {user?.role === "admin" ? "Admin" : "Dashboard"}
               </Link>
             ) : (
               <Link

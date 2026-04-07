@@ -21,6 +21,8 @@ class TicketOut(ORMModel):
     status: TicketStatus
     created_at: datetime
     closed_at: datetime | None
+    student_email: str | None = None
+    student_full_name: str | None = None
 
 
 class MessageCreate(ORMModel):

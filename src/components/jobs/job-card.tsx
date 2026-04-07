@@ -23,6 +23,11 @@ export function JobCard({ job, onViewDetails }: JobCardProps) {
           <div className="min-w-0">
             <h3 className="text-base font-semibold leading-snug text-foreground transition group-hover:text-primary">
               {job.title}
+              {job.applied ? (
+                <span className="ml-2 inline-block rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-primary">
+                  Applied
+                </span>
+              ) : null}
             </h3>
             <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
               <Building2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -47,7 +52,7 @@ export function JobCard({ job, onViewDetails }: JobCardProps) {
           className="w-full rounded-xl shadow-sm transition hover:shadow-md"
           onClick={() => onViewDetails(job)}
         >
-          Apply
+          View details
         </Button>
       </CardFooter>
     </Card>

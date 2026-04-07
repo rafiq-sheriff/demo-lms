@@ -11,6 +11,7 @@ import { TicketList } from "@/components/doubts/ticket-list";
 import { Button } from "@/components/ui/button";
 import {
   ApiError,
+  closeTicket,
   createTicket,
   getTicket,
   listTickets,
@@ -20,7 +21,7 @@ import {
 import type { DoubtTicket } from "@/lib/doubts-data";
 import { useAuth } from "@/contexts/auth-context";
 
-function mapDetailToDoubt(t: TicketDetail, currentUserId: string): DoubtTicket {
+function mapDetailToDoubt(t: TicketDetail): DoubtTicket {
   return {
     id: t.id,
     title: t.subject,
@@ -29,19 +30,23 @@ function mapDetailToDoubt(t: TicketDetail, currentUserId: string): DoubtTicket {
       id: m.id,
       ticketId: t.id,
       body: m.body,
-      sender: m.user_id === currentUserId ? "student" : "mentor",
+      sender: m.user_id === t.user_id ? "student" : "admin",
       at: m.created_at,
     })),
   };
 }
 
-export function DoubtsPageClient() {
+export type DoubtsPageClientProps = {
+  variant?: "student" | "admin";
+};
+
+export function DoubtsPageClient({ variant = "student" }: DoubtsPageClientProps) {
   const qc = useQueryClient();
   const { user } = useAuth();
-  const currentUserId = user?.id ?? "";
+  const viewerRole = variant === "admin" ? "admin" : "student";
 
   const listQuery = useQuery({
-    queryKey: ["tickets"],
+    queryKey: ["tickets", variant],
     queryFn: () => listTickets(),
   });
 
@@ -62,13 +67,17 @@ export function DoubtsPageClient() {
       title: t.subject,
       status: t.status === "open" ? "open" : "closed",
       messages: [],
+      studentLabel:
+        variant === "admin"
+          ? (t.student_full_name?.trim() || t.student_email || "Student")
+          : undefined,
     }));
-  }, [listQuery.data]);
+  }, [listQuery.data, variant]);
 
   const activeTicket: DoubtTicket | null = useMemo(() => {
-    if (!detailQuery.data || !currentUserId) return null;
-    return mapDetailToDoubt(detailQuery.data, currentUserId);
-  }, [detailQuery.data, currentUserId]);
+    if (!detailQuery.data) return null;
+    return mapDetailToDoubt(detailQuery.data);
+  }, [detailQuery.data]);
 
   const createMut = useMutation({
     mutationFn: (body: { subject: string; initial_message: string }) => createTicket(body),
@@ -90,6 +99,16 @@ export function DoubtsPageClient() {
       await qc.invalidateQueries({ queryKey: ["tickets"] });
     },
     onError: (e) => toast.error(e instanceof ApiError ? e.detail : "Could not send message"),
+  });
+
+  const closeMut = useMutation({
+    mutationFn: (ticketId: string) => closeTicket(ticketId),
+    onSuccess: async (_, ticketId) => {
+      await qc.invalidateQueries({ queryKey: ["tickets"] });
+      await qc.invalidateQueries({ queryKey: ["ticket", ticketId] });
+      toast.success("Ticket closed");
+    },
+    onError: (e) => toast.error(e instanceof ApiError ? e.detail : "Could not close ticket"),
   });
 
   const handleSendMessage = useCallback(
@@ -133,28 +152,39 @@ export function DoubtsPageClient() {
     );
   }
 
+  const isStudent = user?.role === "student";
+
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-4">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="lms-page-title">Doubts</h1>
           <p className="lms-page-lead mt-1">
-            Raise questions and chat with mentors in one place.
+            {variant === "admin"
+              ? "Reply to students — open threads on the left."
+              : "Raise questions and get support in one place."}
           </p>
         </div>
-        <Button
-          type="button"
-          className="w-full shrink-0 gap-2 rounded-xl sm:w-auto"
-          onClick={() => setShowNewModal(true)}
-        >
-          <Plus className="h-4 w-4" aria-hidden />
-          New Doubt
-        </Button>
+        {variant === "student" && isStudent ? (
+          <Button
+            type="button"
+            className="w-full shrink-0 gap-2 rounded-xl sm:w-auto"
+            onClick={() => setShowNewModal(true)}
+          >
+            <Plus className="h-4 w-4" aria-hidden />
+            New Doubt
+          </Button>
+        ) : null}
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 md:flex-row md:items-stretch md:gap-0">
         <div className="w-full shrink-0 md:w-[min(100%,20rem)] md:border-r md:border-border/80 md:pr-4">
-          <TicketList tickets={ticketsForList} activeId={activeId} onSelect={setPickedTicketId} />
+          <TicketList
+            tickets={ticketsForList}
+            activeId={activeId}
+            onSelect={setPickedTicketId}
+            variant={variant}
+          />
         </div>
         <div className="flex min-h-[24rem] flex-1 flex-col md:min-h-[32rem] md:pl-4">
           {detailQuery.isFetching && activeId ? (
@@ -165,6 +195,9 @@ export function DoubtsPageClient() {
             <ChatWindow
               ticket={activeTicket}
               onSendMessage={handleSendMessage}
+              onCloseTicket={activeId ? () => closeMut.mutate(activeId) : undefined}
+              closePending={closeMut.isPending}
+              viewerRole={viewerRole}
             />
           )}
         </div>
